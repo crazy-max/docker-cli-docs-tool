@@ -17,40 +17,66 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/docker/buildx/commands"
 	clidocstool "github.com/docker/cli-docs-tool"
 	"github.com/docker/cli/cli/command"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-const sourcePath = "docs/"
+const (
+	pluginName        = "buildx"
+	defaultSourcePath = "docs/"
+)
 
-func main() {
+type options struct {
+	source string
+	target string
+}
+
+func gen(opts *options) error {
 	log.SetFlags(0)
 
 	dockerCLI, err := command.NewDockerCli()
 	if err != nil {
-		log.Printf("ERROR: %+v", err)
+		return err
 	}
-
 	cmd := &cobra.Command{
 		Use:               "docker [OPTIONS] COMMAND [ARG...]",
 		Short:             "The base command for the Docker CLI.",
 		DisableAutoGenTag: true,
 	}
+	cmd.AddCommand(commands.NewRootCmd(pluginName, true, dockerCLI))
 
-	cmd.AddCommand(commands.NewRootCmd("buildx", true, dockerCLI))
-	clidocstool.DisableFlagsInUseLine(cmd)
-
-	cwd, _ := os.Getwd()
-	source := filepath.Join(cwd, sourcePath)
-
-	if err = os.MkdirAll(source, 0755); err != nil {
-		log.Printf("ERROR: %+v", err)
+	c, err := clidocstool.New(clidocstool.Options{
+		Root:      cmd,
+		SourceDir: opts.source,
+		TargetDir: opts.target,
+		Plugin:    true,
+	})
+	if err != nil {
+		return err
 	}
-	if err = clidocstool.GenTree(cmd, source); err != nil {
+	c.DisableFlagsInUseLine()
+
+	return c.GenTree()
+}
+
+func run() error {
+	opts := &options{}
+	flags := pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+	flags.StringVar(&opts.source, "source", defaultSourcePath, "Docs source folder")
+	flags.StringVar(&opts.target, "target", defaultSourcePath, "Docs target folder")
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+	return gen(opts)
+}
+
+func main() {
+	if err := run(); err != nil {
 		log.Printf("ERROR: %+v", err)
+		os.Exit(1)
 	}
 }

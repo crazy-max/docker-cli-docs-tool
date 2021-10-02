@@ -27,10 +27,10 @@ import (
 
 //nolint:errcheck
 func TestGenYamlTree(t *testing.T) {
-	c := &cobra.Command{Use: "do [OPTIONS] arg1 arg2"}
-	s := &cobra.Command{Use: "sub [OPTIONS] arg1 arg2", Run: func(cmd *cobra.Command, args []string) {}}
+	cmd := &cobra.Command{Use: "do [OPTIONS] arg1 arg2"}
+	scmd := &cobra.Command{Use: "sub [OPTIONS] arg1 arg2", Run: func(cmd *cobra.Command, args []string) {}}
 
-	flags := s.Flags()
+	flags := scmd.Flags()
 	_ = flags.Bool("push", false, "Shorthand for --output=type=registry")
 	_ = flags.Bool("load", false, "Shorthand for --output=type=docker")
 	_ = flags.StringArrayP("tag", "t", []string{}, "Name and optionally a tag in the 'name:tag' format")
@@ -65,13 +65,18 @@ func TestGenYamlTree(t *testing.T) {
 	flags.MarkHidden("security-opt")
 	_ = flags.Bool("compress", false, "Compress the build context using gzip")
 
-	c.AddCommand(s)
+	cmd.AddCommand(scmd)
 
 	tmpdir, err := ioutil.TempDir("", "test-gen-yaml-tree")
 	require.NoError(t, err)
-
 	defer os.RemoveAll(tmpdir)
-	require.NoError(t, GenYamlTree(c, tmpdir))
+
+	c, err := New(Options{
+		Root:      cmd,
+		SourceDir: tmpdir,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.GenYamlTree(cmd))
 
 	fres := filepath.Join(tmpdir, "do_sub.yaml")
 	require.FileExists(t, fres)
