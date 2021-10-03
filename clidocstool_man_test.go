@@ -1,4 +1,4 @@
-// Copyright 2017 cli-docs-tool authors
+// Copyright 2021 cli-docs-tool authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,29 +20,36 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra/doc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 //nolint:errcheck
-func TestGenYamlTree(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "test-gen-yaml-tree")
+func TestGenManTree(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "test-gen-man-tree")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
 	c, err := New(Options{
-		Root:      cmd,
+		Root: cmd,
+		ManHeader: &doc.GenManHeader{
+			Title:   "DOCKER",
+			Section: "1",
+			Source:  "Docker Community",
+			Manual:  "Docker User Manuals",
+		},
 		SourceDir: tmpdir,
 		Plugin:    true,
 	})
 	require.NoError(t, err)
-	require.NoError(t, c.GenYamlTree(cmd))
+	require.NoError(t, c.GenManTree(cmd))
 
-	fres := filepath.Join(tmpdir, "do_sub.yaml")
+	fres := filepath.Join(tmpdir, "do-sub.1")
 	require.FileExists(t, fres)
 	bres, err := ioutil.ReadFile(fres)
 	require.NoError(t, err)
-	bexc, err := ioutil.ReadFile("fixtures/do_sub.yaml")
+	bexc, err := ioutil.ReadFile("fixtures/do-sub.1")
 	require.NoError(t, err)
 	assert.Equal(t, string(bres), string(bexc))
 }

@@ -22,6 +22,7 @@ import (
 	clidocstool "github.com/docker/cli-docs-tool"
 	"github.com/docker/cli/cli/command"
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 )
 
@@ -38,19 +39,31 @@ type options struct {
 func gen(opts *options) error {
 	log.SetFlags(0)
 
+	// create a new instance of Docker CLI
 	dockerCLI, err := command.NewDockerCli()
 	if err != nil {
 		return err
 	}
+
+	// root command
 	cmd := &cobra.Command{
 		Use:               "docker [OPTIONS] COMMAND [ARG...]",
 		Short:             "The base command for the Docker CLI.",
 		DisableAutoGenTag: true,
 	}
+
+	// subcommand for the plugin with commands.NewRootCmd.
 	cmd.AddCommand(commands.NewRootCmd(pluginName, true, dockerCLI))
 
+	// create a new instance of cli-docs-tool
 	c, err := clidocstool.New(clidocstool.Options{
-		Root:      cmd,
+		Root: cmd,
+		Header: &doc.GenManHeader{
+			Title:   "BUILDX",
+			Section: "1",
+			Source:  "Docker Community",
+			Manual:  "Docker User Manuals",
+		},
 		SourceDir: opts.source,
 		TargetDir: opts.target,
 		Plugin:    true,
@@ -60,7 +73,8 @@ func gen(opts *options) error {
 	}
 	c.DisableFlagsInUseLine()
 
-	return c.GenTree()
+	// generate all supported docs formats
+	return c.GenTreeAll()
 }
 
 func run() error {
